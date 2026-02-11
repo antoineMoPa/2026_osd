@@ -60,16 +60,6 @@
       margin-bottom: 20px;
     }
 
-    .search-box {
-      flex: 1;
-      padding: 10px 15px;
-      background: #1a1a2e;
-      border: 1px solid #3a3a4e;
-      border-radius: 6px;
-      color: #e0e0e0;
-      font-size: 14px;
-    }
-
     .clear-btn {
       padding: 10px 20px;
       background: #6a3a3a;
@@ -127,19 +117,6 @@
       padding: 15px;
     }
 
-    .card-date {
-      font-size: 12px;
-      color: #888;
-      margin-bottom: 8px;
-    }
-
-    .card-stats {
-      font-size: 13px;
-      color: #aaa;
-      margin-bottom: 12px;
-      line-height: 1.6;
-    }
-
     .card-actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -189,80 +166,6 @@
       color: #888;
     }
 
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .modal.active {
-      display: flex;
-    }
-
-    .modal-content {
-      background: #1a1a2e;
-      border: 1px solid #2a2a3e;
-      border-radius: 8px;
-      max-width: 500px;
-      width: 90%;
-      padding: 20px;
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-
-    .modal-close {
-      float: right;
-      font-size: 24px;
-      cursor: pointer;
-      color: #888;
-    }
-
-    .modal-close:hover {
-      color: #e0e0e0;
-    }
-
-    .modal h3 {
-      margin-top: 10px;
-      margin-bottom: 15px;
-      font-size: 16px;
-    }
-
-    .modal-stat {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid #2a2a3e;
-      font-size: 13px;
-    }
-
-    .modal-buttons {
-      display: flex;
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .modal-btn {
-      flex: 1;
-      padding: 10px;
-      background: #4a9eff;
-      border: none;
-      border-radius: 6px;
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .modal-btn:hover {
-      background: #3a8eef;
-    }
   </style>
 </head>
 <body>
@@ -272,11 +175,10 @@
   <div class="container">
     <div class="header">
       <h1>Generation History</h1>
-      <a href="index.html" class="back-btn">← Back to Generator</a>
+      <a href="index.html" class="back-btn">Launch Generator</a>
     </div>
 
     <div class="controls">
-      <input type="text" id="search-box" class="search-box" placeholder="Search by date...">
       <button id="clear-btn" class="clear-btn">Clear History</button>
     </div>
 
@@ -288,41 +190,42 @@
     </div>
   </div>
 
-  <!-- Detail Modal -->
-  <div id="detail-modal" class="modal">
-    <div class="modal-content" style="max-width: 600px;">
-      <span class="modal-close">&times;</span>
-      <canvas id="modal-canvas" style="width: 100%; height: 400px; border-radius: 6px; margin-bottom: 15px; background: #0a0a0f;"></canvas>
-      <h3 id="modal-date"></h3>
-      <div id="modal-stats"></div>
-      <div class="modal-buttons">
-        <button id="modal-download-btn" class="modal-btn">Download</button>
-        <button id="modal-close-btn" class="modal-btn" style="background: #2a2a3e; color: #e0e0e0; border: 1px solid #3a3a4e;">Close</button>
-      </div>
-    </div>
-  </div>
-
   <script>
-    const LS_PREFIX = 'hunyuan3d_generation_';
     const previewScenes = {}; // Store scenes for cleanup
 
     function loadModelPreview(canvasId, glbUrl) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+
       if (!glbUrl) {
-        const canvas = document.getElementById(canvasId);
-        if (canvas) {
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#1a1a2e';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.fillStyle = '#666';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText('No model', canvas.width / 2, canvas.height / 2);
+        // Set canvas resolution based on display size
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#0f0f1a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Draw subtle grid pattern
+        ctx.strokeStyle = '#2a2a3e';
+        ctx.lineWidth = 0.5;
+        for (let i = 0; i < canvas.width; i += 20) {
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i, canvas.height);
+          ctx.stroke();
+        }
+        for (let i = 0; i < canvas.height; i += 20) {
+          ctx.beginPath();
+          ctx.moveTo(0, i);
+          ctx.lineTo(canvas.width, i);
+          ctx.stroke();
         }
         return;
       }
 
-      const canvas = document.getElementById(canvasId);
-      if (!canvas) return;
+      // Set canvas resolution for Babylon preview
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
 
       try {
         const engine = new BABYLON.Engine(canvas, true, { antialias: true });
@@ -410,20 +313,16 @@
     }
 
     function getGenerations() {
-      const generations = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key.startsWith(LS_PREFIX)) {
-          try {
-            const data = JSON.parse(localStorage.getItem(key));
-            generations.push(data);
-          } catch (e) {
-            console.error('Failed to parse generation:', e);
-          }
-        }
+      try {
+        const history = JSON.parse(localStorage.getItem('history') || '[]');
+        // Filter by hunyuan3d ai_model and sort by date descending
+        return history
+          .filter(entry => entry.ai_model === 'hunyuan3d')
+          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      } catch (e) {
+        console.error('Failed to parse history:', e);
+        return [];
       }
-      // Sort by date descending
-      return generations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     }
 
     function formatDate(timestamp) {
@@ -448,173 +347,50 @@
       generations.forEach((gen, index) => {
         const card = document.createElement('div');
         card.className = 'generation-card';
-        const canvasId = `canvas-${index}`;
+        let canvasId = null;
 
-        card.innerHTML = `
-          <canvas id="${canvasId}" class="card-image" style="cursor: grab; active { cursor: grabbing; }"></canvas>
-          <div class="card-content">
-            <div class="card-date">${formatDate(gen.timestamp)}</div>
-            <div class="card-stats">
-              <div>Original: ${gen.originalVertices?.toLocaleString() || '?'} vertices</div>
-              <div>${gen.originalFaces?.toLocaleString() || '?'} faces</div>
-              ${gen.retopVertices ? `<div style="margin-top: 6px; border-top: 1px solid #2a2a3e; padding-top: 6px;">Retopo: ${gen.retopVertices.toLocaleString()} vertices<br>${gen.retopFaces.toLocaleString()} faces</div>` : ''}
+        // For cards without retopo, show original_image_data as thumbnail image
+        // For cards with retopo, show 3D preview of retopo model
+        if (!gen.retopo && gen.original_image_data) {
+          card.innerHTML = `
+            <img src="${gen.original_image_data}" class="card-image" style="object-fit: cover;" />
+            <div class="card-content">
+              <div class="card-actions">
+                <button class="action-btn" onclick="loadInEditor(${index})">Edit</button>
+                <button class="action-btn" onclick="downloadModel(${index})">Download</button>
+              </div>
             </div>
-            <div class="card-actions">
-              <button class="action-btn primary" onclick="openDetail(${index})">View</button>
-              <button class="action-btn" onclick="loadInEditor(${index})">Edit</button>
-              <button class="action-btn" onclick="downloadModel(${index})">Download</button>
+          `;
+        } else {
+          canvasId = `canvas-${index}`;
+          card.innerHTML = `
+            <canvas id="${canvasId}" class="card-image" style="cursor: grab; active { cursor: grabbing; }"></canvas>
+            <div class="card-content">
+              <div class="card-actions">
+                <button class="action-btn" onclick="loadInEditor(${index})">Edit</button>
+                <button class="action-btn" onclick="downloadModel(${index})">Download</button>
+              </div>
             </div>
-          </div>
-        `;
+          `;
+        }
+
         gallery.appendChild(card);
 
-        // Load and render model
-        loadModelPreview(canvasId, gen.glbUrl);
-      });
-    }
-
-    function openDetail(index) {
-      const generations = getGenerations();
-      const gen = generations[index];
-
-      document.getElementById('modal-date').textContent = formatDate(gen.timestamp);
-
-      const statsHtml = `
-        <div class="modal-stat">
-          <span>Original Model</span>
-          <span>${gen.originalVertices?.toLocaleString() || '?'} vertices</span>
-        </div>
-        <div class="modal-stat">
-          <span>Original Faces</span>
-          <span>${gen.originalFaces?.toLocaleString() || '?'}</span>
-        </div>
-        ${gen.retopVertices ? `
-          <div class="modal-stat">
-            <span>Retopologized</span>
-            <span>${gen.retopVertices.toLocaleString()} vertices</span>
-          </div>
-          <div class="modal-stat">
-            <span>Retopo Faces</span>
-            <span>${gen.retopFaces.toLocaleString()}</span>
-          </div>
-        ` : ''}
-      `;
-      document.getElementById('modal-stats').innerHTML = statsHtml;
-
-      // Load 3D model in modal
-      if (gen.glbUrl) {
-        loadModalModel(gen.glbUrl);
-      }
-
-      document.getElementById('modal-download-btn').onclick = () => downloadModel(index);
-      document.getElementById('detail-modal').classList.add('active');
-    }
-
-    function loadModalModel(glbUrl) {
-      // Cleanup previous modal scene
-      if (previewScenes['modal-canvas']) {
-        previewScenes['modal-canvas'].engine.dispose();
-        delete previewScenes['modal-canvas'];
-      }
-
-      const canvas = document.getElementById('modal-canvas');
-      const engine = new BABYLON.Engine(canvas, true);
-      const scene = new BABYLON.Scene(engine);
-      previewScenes['modal-canvas'] = { engine, scene };
-
-      scene.clearColor = new BABYLON.Color4(0.07, 0.07, 0.12, 1);
-
-      // Camera
-      const camera = new BABYLON.ArcRotateCamera(
-        'camera',
-        -Math.PI / 2,
-        Math.PI / 3,
-        5,
-        BABYLON.Vector3.Zero(),
-        scene
-      );
-      camera.attachControl(canvas, true);
-      camera.wheelPrecision = 20;
-
-      // Lights
-      const hemiLight = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
-      hemiLight.intensity = 0.6;
-
-      const dirLight = new BABYLON.DirectionalLight('dir', new BABYLON.Vector3(-1, -1, -1), scene);
-      dirLight.intensity = 0.8;
-
-      // Load model
-      BABYLON.SceneLoader.ImportMeshAsync('', '', glbUrl, scene).then(() => {
-        const meshes = scene.meshes.filter(m => m.name !== '__root__');
-        if (meshes.length > 0) {
-          let minX = Infinity, minY = Infinity, minZ = Infinity;
-          let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-
-          meshes.forEach(mesh => {
-            const bb = mesh.getBoundingInfo().boundingBox;
-            minX = Math.min(minX, bb.minimumWorld.x);
-            minY = Math.min(minY, bb.minimumWorld.y);
-            minZ = Math.min(minZ, bb.minimumWorld.z);
-            maxX = Math.max(maxX, bb.maximumWorld.x);
-            maxY = Math.max(maxY, bb.maximumWorld.y);
-            maxZ = Math.max(maxZ, bb.maximumWorld.z);
-          });
-
-          const center = new BABYLON.Vector3(
-            (minX + maxX) / 2,
-            (minY + maxY) / 2,
-            (minZ + maxZ) / 2
-          );
-
-          const diag = Math.sqrt(
-            (maxX - minX) ** 2 +
-            (maxY - minY) ** 2 +
-            (maxZ - minZ) ** 2
-          );
-
-          camera.target = center;
-          camera.radius = diag * 0.6;
+        // Load 3D preview for canvas cards
+        if (canvasId) {
+          const previewUrl = gen.retopo?.glb_url || null;
+          loadModelPreview(canvasId, previewUrl);
         }
       });
-
-      engine.runRenderLoop(() => scene.render());
-
-      window.addEventListener('resize', () => engine.resize());
     }
 
-    function closeModal() {
-      document.getElementById('detail-modal').classList.remove('active');
-    }
 
     function loadInEditor(index) {
       const generations = getGenerations();
       const gen = generations[index];
 
-      // Ask which version to load
-      const hasRetopo = gen.retopGlbUrl ? true : false;
-      let urlToLoad = gen.glbUrl;
-      let modelType = 'original';
-
-      if (hasRetopo) {
-        const choice = confirm('Load retopologized version? (OK=Retopo, Cancel=Original)');
-        if (choice) {
-          urlToLoad = gen.retopGlbUrl;
-          modelType = 'retopo';
-        }
-      }
-
-      // Save to localStorage for generator to load
-      const loadData = {
-        glbUrl: urlToLoad,
-        modelType: modelType,
-        originalVertices: gen.originalVertices,
-        originalFaces: gen.originalFaces,
-        retopVertices: gen.retopVertices,
-        retopFaces: gen.retopFaces,
-        loadedAt: new Date().toISOString()
-      };
-
-      localStorage.setItem('hunyuan3d_load_model', JSON.stringify(loadData));
+      // Save full generation entry for generator to load
+      localStorage.setItem('hunyuan3d_load_model', JSON.stringify(gen));
 
       // Redirect to generator
       window.location.href = 'index.html';
@@ -624,10 +400,11 @@
       const generations = getGenerations();
       const gen = generations[index];
 
-      const glbUrl = gen.glbUrl || (gen.retopGlbUrl && confirm('Download retopologized model instead?') ? gen.retopGlbUrl : null);
+      // Prefer retopo if available, otherwise download original
+      const glbUrl = gen.retopo?.glb_url || gen.model?.glb_url;
 
       if (!glbUrl) {
-        alert('No model URL available');
+        alert('No model available');
         return;
       }
 
@@ -647,31 +424,21 @@
     }
 
     function clearHistory() {
-      if (!confirm('Are you sure? This will delete all generation history.')) return;
+      if (!confirm('Are you sure? This will delete all hunyuan3d generation history.')) return;
 
-      const keys = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key.startsWith(LS_PREFIX)) {
-          keys.push(key);
-        }
+      try {
+        const history = JSON.parse(localStorage.getItem('history') || '[]');
+        // Filter out hunyuan3d entries, keeping any other ai_model entries for future use
+        const filtered = history.filter(entry => entry.ai_model !== 'hunyuan3d');
+        localStorage.setItem('history', JSON.stringify(filtered));
+        renderGallery();
+      } catch (e) {
+        console.error('Failed to clear history:', e);
       }
-      keys.forEach(key => localStorage.removeItem(key));
-      renderGallery();
     }
 
     // Event listeners
     document.getElementById('clear-btn').addEventListener('click', clearHistory);
-    document.querySelector('.modal-close').addEventListener('click', closeModal);
-    document.getElementById('modal-close-btn').addEventListener('click', closeModal);
-
-    document.getElementById('search-box').addEventListener('input', (e) => {
-      const query = e.target.value.toLowerCase();
-      document.querySelectorAll('.generation-card').forEach(card => {
-        const date = card.querySelector('.card-date').textContent.toLowerCase();
-        card.style.display = date.includes(query) ? 'block' : 'none';
-      });
-    });
 
     // Initial render
     renderGallery();

@@ -105,7 +105,7 @@
       margin-bottom: 8px;
     }
 
-    #paste-zone {
+    #input-zone {
       border: 2px dashed #3a3a4e;
       border-radius: 8px;
       padding: 20px;
@@ -119,36 +119,26 @@
       justify-content: center;
     }
 
-    #paste-zone:hover {
+    #input-zone:hover {
       border-color: #4a9eff;
       background: #15151f;
     }
 
-    #paste-zone.has-image {
-      border-style: solid;
-      border-color: #4a9eff;
-      padding: 0;
-    }
-
-    #paste-zone.has-image img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      border-radius: 6px;
-    }
-
-    #paste-zone-text {
+    #input-zone-text {
       color: #888;
       font-size: 13px;
       line-height: 1.5;
     }
 
-    #paste-zone-text strong {
+    #input-zone-text strong {
       color: #e0e0e0;
     }
 
     #image-preview {
-      display: none;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 6px;
     }
 
     #generate-btn {
@@ -442,10 +432,8 @@
 </head>
 <body>
   <div id="header">
-    <div style="display: flex; gap: 20px; align-items: center;">
-      <h1>3D Model Generator</h1>
-      <a href="dashboard.html" style="font-size: 13px; color: #4a9eff; text-decoration: none; padding: 6px 12px; background: #2a2a3e; border-radius: 4px; transition: all 0.2s;" onmouseover="this.style.background='#3a3a4e'" onmouseout="this.style.background='#2a2a3e'">📊 History</a>
-    </div>
+    <a href="dashboard.html" style="font-size: 13px; color: #4a9eff; text-decoration: none; padding: 6px 12px; background: #2a2a3e; border-radius: 4px; transition: all 0.2s; white-space: nowrap;" onmouseover="this.style.background='#3a3a4e'" onmouseout="this.style.background='#2a2a3e'">History</a>
+    <h1>3D Model Generator</h1>
     <div id="api-key-group">
       <button id="settings-btn">⚙️</button>
     </div>
@@ -475,13 +463,18 @@
 
   <div id="main">
     <div id="left-panel">
-      <div class="section-title">Image</div>
-      <div id="paste-zone">
-        <div id="paste-zone-text">
-          <strong>Paste an image</strong><br>
-          (Ctrl+V or Cmd+V)
+      <div class="section-title">Input</div>
+      <div id="input-zone" style="border: 2px dashed #3a3a4e; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; background: #0f0f1a; transition: all 0.2s; min-height: 120px; display: flex; align-items: center; justify-content: center;">
+        <div id="input-zone-text" style="color: #888; font-size: 13px;">
+          <strong>Paste an image or GLB</strong><br>
+          (Ctrl+V / Cmd+V or drag & drop)
         </div>
-        <img id="image-preview" />
+        <img id="image-preview" style="display: none; width: 100%; height: 100%; object-fit: cover; border-radius: 6px;" />
+        <div id="glb-loaded-text" style="display: none; color: #4a9eff; font-size: 13px;">
+          <strong>GLB Loaded ✓</strong><br>
+          <span id="glb-filename" style="font-size: 12px; color: #aaa;"></span>
+        </div>
+        <input id="file-input" type="file" accept=".glb,image/*" style="display: none;" />
       </div>
 
       <div class="section-title">Generate</div>

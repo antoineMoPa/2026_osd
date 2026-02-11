@@ -2,18 +2,7 @@
 // Constants
 // ============================================================================
 
-const LS_KEYS = {
-  API_KEY: 'hunyuan3d_api_key',
-  IMAGE_B64: 'hunyuan3d_image_b64',
-  REQUEST_ID: 'hunyuan3d_request_id',
-  LAST_STATUS: 'hunyuan3d_last_status',
-  LAST_RESULT: 'hunyuan3d_last_result',
-  GLB_URL: 'hunyuan3d_glb_url',
-  RETOPO_REQUEST_ID: 'hunyuan3d_retopo_request_id',
-  RETOPO_STATUS: 'hunyuan3d_retopo_status',
-  RETOPO_RESULT: 'hunyuan3d_retopo_result',
-  RETOPO_GLB_URL: 'hunyuan3d_retopo_glb_url'
-};
+const LS_API_KEY = 'fal_key';
 
 const FAL_BASE = 'https://queue.fal.run';
 const FAL_MODEL = 'fal-ai/hunyuan3d-v3/image-to-3d';
@@ -21,6 +10,28 @@ const FAL_MODEL_BASE = 'fal-ai/hunyuan3d'; // For status/result requests
 const FAL_RETOPO = 'fal-ai/hunyuan-3d/v3.1/smart-topology';
 const POLL_MS = 3000;
 const MAX_POLLS = 200; // 10 min timeout
+
+// ============================================================================
+// Current Generation Helpers
+// ============================================================================
+
+function getCurrentGeneration() {
+  try {
+    return JSON.parse(localStorage.getItem('current_generation') || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function saveCurrentGeneration(gen) {
+  localStorage.setItem('current_generation', JSON.stringify(gen));
+}
+
+function updateCurrentGeneration(updates) {
+  const gen = getCurrentGeneration();
+  Object.assign(gen, updates);
+  saveCurrentGeneration(gen);
+}
 
 // ============================================================================
 // State
@@ -50,9 +61,10 @@ const state = {
 // ============================================================================
 
 function loadStateFromStorage() {
-  state.apiKey = localStorage.getItem(LS_KEYS.API_KEY) || '';
-  state.imageB64 = localStorage.getItem(LS_KEYS.IMAGE_B64) || '';
-  state.requestId = localStorage.getItem(LS_KEYS.REQUEST_ID) || '';
+  state.apiKey = localStorage.getItem(LS_API_KEY) || '';
+  const gen = getCurrentGeneration();
+  state.imageB64 = gen.image_b64 || '';
+  state.requestId = gen.request_id || '';
 }
 
 function saveToLocalStorage(key, value) {
@@ -134,11 +146,12 @@ function clearScene() {
   document.getElementById('model-stats').style.display = 'none';
 }
 
-function calculateModelStats() {
+function calculateModelStats(meshes = null) {
+  const meshesToUse = meshes || state.meshes;
   let totalVertices = 0;
   let totalFaces = 0;
 
-  state.meshes.forEach(mesh => {
+  meshesToUse.forEach(mesh => {
     if (mesh.geometry) {
       const positions = mesh.geometry.getVerticesData(window.BABYLON.VertexBuffer.PositionKind);
       const indices = mesh.geometry.getIndices();
@@ -178,18 +191,44 @@ function displayModelStats() {
   }
 }
 
+// ============================================================================
+// History Helpers
+// ============================================================================
+
+function getHistory() {
+  try {
+    return JSON.parse(localStorage.getItem('history') || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(history) {
+  localStorage.setItem('history', JSON.stringify(history));
+}
+
 function saveGenerationHistory(modelType, stats) {
   const generationId = Date.now();
   state.generationId = generationId;
-  const generationData = {
+  const gen = getCurrentGeneration();
+
+  const entry = {
+    id: generationId,
     timestamp: new Date().toISOString(),
-    glbUrl: localStorage.getItem(LS_KEYS.GLB_URL),
-    originalVertices: stats.vertices,
-    originalFaces: stats.faces
+    ai_model: 'hunyuan3d',
+    original_image_data: state.imageB64,
+    model: {
+      glb_url: gen.glb_url,
+      vertices: stats.vertices,
+      faces: stats.faces
+    },
+    retopo: null
   };
 
   try {
-    localStorage.setItem(`hunyuan3d_generation_${generationId}`, JSON.stringify(generationData));
+    const history = getHistory();
+    history.push(entry);
+    saveHistory(history);
   } catch (e) {
     if (e.name === 'QuotaExceededError') {
       showError('Storage full: Clear history to save new generations');
@@ -201,14 +240,17 @@ function saveGenerationHistory(modelType, stats) {
 }
 
 function updateGenerationHistory(generationId, updates) {
-  const key = `hunyuan3d_generation_${generationId}`;
-  const existing = JSON.parse(localStorage.getItem(key) || '{}');
-  const updated = { ...existing, ...updates };
-  localStorage.setItem(key, JSON.stringify(updated));
+  const history = getHistory();
+  const entry = history.find(e => e.id === generationId);
+  if (entry) {
+    Object.assign(entry, updates);
+    saveHistory(history);
+  }
 }
 
 function downloadGLB() {
-  const glbUrl = localStorage.getItem(LS_KEYS.GLB_URL);
+  const gen = getCurrentGeneration();
+  const glbUrl = gen.glb_url;
   if (!glbUrl) {
     showError('No model URL available');
     return;
@@ -262,7 +304,7 @@ function setupAPIKeyUI() {
   // Save API key
   saveBtn.addEventListener('click', () => {
     state.apiKey = input.value;
-    saveToLocalStorage(LS_KEYS.API_KEY, input.value);
+    saveToLocalStorage(LS_API_KEY, input.value);
     closeSettings();
   });
 
@@ -272,8 +314,148 @@ function setupAPIKeyUI() {
   });
 }
 
-function setupImagePaste() {
+function setupInputZone() {
+  const zone = document.getElementById('input-zone');
+  const fileInput = document.getElementById('file-input');
+
+  // Click to open file picker
+  zone.addEventListener('click', () => fileInput.click());
+
+  // Drag and drop
+  zone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    zone.style.borderColor = '#4a9eff';
+    zone.style.background = '#15151f';
+  });
+
+  zone.addEventListener('dragleave', () => {
+    zone.style.borderColor = '#3a3a4e';
+    zone.style.background = '#0f0f1a';
+  });
+
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.style.borderColor = '#3a3a4e';
+    zone.style.background = '#0f0f1a';
+
+    const files = e.dataTransfer?.files || [];
+    if (files.length > 0) {
+      handleInputFile(files[0]);
+    }
+  });
+
+  // File input change
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files?.length > 0) {
+      handleInputFile(e.target.files[0]);
+    }
+  });
+
+  // Paste handler
   window.addEventListener('paste', handlePaste);
+}
+
+function handleGLBFile(file) {
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const arrayBuffer = evt.target.result;
+      const blob = new Blob([arrayBuffer], { type: 'model/gltf-binary' });
+      const url = URL.createObjectURL(blob);
+
+      // Store in current generation for retopology
+      const gen = getCurrentGeneration();
+      gen.glb_url = url;
+      gen.glb_source = 'uploaded'; // Mark as uploaded (not from FAL)
+      gen.image_b64 = ''; // Clear image since we're not generating
+      saveCurrentGeneration(gen);
+
+      // Show in UI
+      clearScene();
+      loadUploadedGLB(url, file.name);
+
+      // Update UI to show GLB is loaded
+      const text = document.getElementById('input-zone-text');
+      const glbText = document.getElementById('glb-loaded-text');
+      const preview = document.getElementById('image-preview');
+
+      text.style.display = 'none';
+      preview.style.display = 'none';
+      glbText.style.display = 'block';
+      document.getElementById('glb-filename').textContent = file.name;
+
+      // Show retopology section since we have a model
+      document.getElementById('retopology-section').style.display = 'block';
+
+      clearError();
+    } catch (err) {
+      showError('Failed to load GLB file: ' + err.message);
+    }
+  };
+
+  reader.onerror = () => {
+    showError('Failed to read GLB file');
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+async function loadUploadedGLB(blobUrl, filename) {
+  try {
+    setStatus('Loading uploaded model...', 10);
+
+    const blob = await fetch(blobUrl).then(r => r.blob());
+    const BABYLON = window.BABYLON;
+    BABYLON.FilesInput.FilesToLoad['uploaded.glb'] = new File([blob], filename, { type: 'model/gltf-binary' });
+
+    setStatus('Rendering model...', 50);
+    const importResult = await BABYLON.SceneLoader.ImportMeshAsync(
+      '',
+      'file:',
+      'uploaded.glb',
+      state.scene
+    );
+
+    state.meshes = importResult.meshes.filter(m => m.name !== '__root__');
+
+    if (state.meshes.length > 0) {
+      fitCameraToMeshes(state.meshes);
+      displayModelStats();
+    }
+
+    setStatus('Complete!', 100);
+    clearStatus();
+    document.getElementById('canvas-overlay').classList.add('hidden');
+  } catch (err) {
+    console.error('GLB loading error:', err);
+    showError('Failed to load model: ' + err.message);
+  }
+}
+
+function handleInputFile(file) {
+  const isGLB = file.name.toLowerCase().endsWith('.glb');
+  const isImage = file.type.startsWith('image/');
+
+  if (isGLB) {
+    handleGLBFile(file);
+  } else if (isImage) {
+    handleImageFile(file);
+  } else {
+    showError('Please select an image or GLB file');
+  }
+}
+
+function handleImageFile(file) {
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    const dataUrl = evt.target.result;
+    state.imageB64 = dataUrl;
+    updateCurrentGeneration({ image_b64: dataUrl });
+    updateImagePreview(dataUrl);
+    document.getElementById('generate-btn').disabled = false;
+    clearError();
+  };
+  reader.readAsDataURL(file);
 }
 
 function handlePaste(e) {
@@ -281,30 +463,21 @@ function handlePaste(e) {
   for (let item of items) {
     if (item.type.startsWith('image/')) {
       const file = item.getAsFile();
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const dataUrl = evt.target.result;
-        state.imageB64 = dataUrl;
-        saveToLocalStorage(LS_KEYS.IMAGE_B64, dataUrl);
-        updateImagePreview(dataUrl);
-        document.getElementById('generate-btn').disabled = false;
-        clearError();
-      };
-      reader.readAsDataURL(file);
+      handleImageFile(file);
       break;
     }
   }
 }
 
 function updateImagePreview(dataUrl) {
-  const zone = document.getElementById('paste-zone');
   const preview = document.getElementById('image-preview');
-  const text = document.getElementById('paste-zone-text');
+  const text = document.getElementById('input-zone-text');
+  const glbText = document.getElementById('glb-loaded-text');
 
   preview.src = dataUrl;
   preview.style.display = 'block';
   text.style.display = 'none';
-  zone.classList.add('has-image');
+  glbText.style.display = 'none';
 }
 
 function setupGenerateButton() {
@@ -333,17 +506,30 @@ function startGeneration() {
 
   setGenerating(true);
   setStatus('Submitting...', 5);
-  localStorage.removeItem(LS_KEYS.GLB_URL);
-  localStorage.removeItem(LS_KEYS.RETOPO_GLB_URL);
+  updateCurrentGeneration({
+    glb_url: null,
+    retopo_glb_url: null,
+    request_id: '',
+    last_status: '',
+    last_result: null,
+    retopo_request_id: '',
+    retopo_status: '',
+    retopo_result: null,
+    glb_source: null // Clear the glb_source flag
+  });
   state.retopoMeshes = [];
   state.currentModel = 'original';
   document.getElementById('model-selector').style.display = 'none';
   document.getElementById('retopology-section').style.display = 'none';
+  // Reset input zone display
+  document.getElementById('input-zone-text').style.display = 'block';
+  document.getElementById('image-preview').style.display = 'none';
+  document.getElementById('glb-loaded-text').style.display = 'none';
 
   const url = `${FAL_BASE}/${FAL_MODEL}`;
   const body = {
     input_image_url: state.imageB64,
-    enable_pbr: false
+    enable_pbr: true
   };
 
   fetch(url, {
@@ -358,8 +544,10 @@ function startGeneration() {
     .then(data => {
       if (data.request_id) {
         state.requestId = data.request_id;
-        saveToLocalStorage(LS_KEYS.REQUEST_ID, data.request_id);
-        saveToLocalStorage(LS_KEYS.LAST_STATUS, 'pending');
+        updateCurrentGeneration({
+          request_id: data.request_id,
+          last_status: 'pending'
+        });
         state.pollCount = 0;
         startPolling();
       } else {
@@ -412,13 +600,13 @@ function pollStatus() {
         setStatus('Generating...', pct);
         schedulePoll();
       } else if (status === 'COMPLETED') {
-        saveToLocalStorage(LS_KEYS.LAST_STATUS, 'completed');
+        updateCurrentGeneration({ last_status: 'completed' });
         setStatus('Processing result...', 85);
         fetchResult();
       } else if (status === 'FAILED') {
         const reason = data.error || 'Unknown error';
         showError('Generation failed: ' + reason);
-        saveToLocalStorage(LS_KEYS.LAST_STATUS, 'failed');
+        updateCurrentGeneration({ last_status: 'failed' });
         clearRequestId();
         setGenerating(false);
       } else {
@@ -456,8 +644,10 @@ function fetchResult() {
     .then(r => r.json())
     .then(data => {
       if (data.model_glb?.url) {
-        saveToLocalStorage(LS_KEYS.LAST_RESULT, JSON.stringify(data));
-        saveToLocalStorage(LS_KEYS.GLB_URL, data.model_glb.url);
+        updateCurrentGeneration({
+          last_result: data,
+          glb_url: data.model_glb.url
+        });
         setStatus('Loading model...', 90);
         loadGLBModel(data);
         clearRequestId();
@@ -475,7 +665,7 @@ function fetchResult() {
 
 function clearRequestId() {
   state.requestId = '';
-  localStorage.removeItem(LS_KEYS.REQUEST_ID);
+  updateCurrentGeneration({ request_id: '' });
   if (state.pollTimer) {
     clearTimeout(state.pollTimer);
     state.pollTimer = null;
@@ -488,50 +678,55 @@ function clearRequestId() {
 
 async function loadGLBModel(result) {
   try {
-    const glbUrl = result.model_glb?.url;
+    // Check if there's a stored retopo model - if so, skip loading original (saves 30MB)
+    const gen = getCurrentGeneration();
+    const retopoResult = gen.retopo_result;
+    const hasRetopo = retopoResult && retopoResult.model_glb?.url;
 
-    if (!glbUrl) {
-      showError('Missing GLB URL in result');
-      setGenerating(false);
-      return;
-    }
-
-    // Fetch GLB file
-    setStatus('Fetching model...', 92);
-    const glbBlob = await fetch(glbUrl).then(r => r.blob());
-
-    // Register GLB file
-    setStatus('Loading model...', 95);
-    const BABYLON = window.BABYLON;
-    BABYLON.FilesInput.FilesToLoad['model.glb'] = new File([glbBlob], 'model.glb', { type: 'model/gltf-binary' });
-
-    // Load GLB model
-    setStatus('Rendering model...', 98);
-    const importResult = await BABYLON.SceneLoader.ImportMeshAsync(
-      '',
-      'file:',
-      'model.glb',
-      state.scene
-    );
-
-    state.meshes = importResult.meshes.filter(m => m.name !== '__root__');
-
-    // Fit camera
-    if (state.meshes.length > 0) {
-      fitCameraToMeshes(state.meshes);
-      displayModelStats();
-    }
-
-    // Check if there's a stored retopo model
-    const retopoResult = localStorage.getItem(LS_KEYS.RETOPO_RESULT);
-    if (retopoResult) {
+    if (hasRetopo) {
+      // Load only retopo, skip original
       try {
-        const result = JSON.parse(retopoResult);
-        if (result.model_glb?.url) {
-          loadStoredRetopoModel(result);
+        setStatus('Loading retopologized model...', 95);
+        const retopoData = JSON.parse(retopoResult);
+        if (retopoData.model_glb?.url) {
+          await loadStoredRetopoModel(retopoData);
         }
       } catch (e) {
         console.error('Failed to load stored retopo model:', e);
+      }
+    } else {
+      // Load original model
+      const glbUrl = result.model_glb?.url;
+
+      if (!glbUrl) {
+        showError('Missing GLB URL in result');
+        setGenerating(false);
+        return;
+      }
+
+      // Fetch GLB file
+      setStatus('Fetching model...', 92);
+      const glbBlob = await fetch(glbUrl).then(r => r.blob());
+
+      // Register GLB file
+      setStatus('Loading model...', 95);
+      const BABYLON = window.BABYLON;
+      BABYLON.FilesInput.FilesToLoad['model.glb'] = new File([glbBlob], 'model.glb', { type: 'model/gltf-binary' });
+
+      // Load GLB model
+      setStatus('Rendering model...', 98);
+      const importResult = await BABYLON.SceneLoader.ImportMeshAsync(
+        '',
+        'file:',
+        'model.glb',
+        state.scene
+      );
+
+      state.meshes = importResult.meshes.filter(m => m.name !== '__root__');
+
+      if (state.meshes.length > 0) {
+        fitCameraToMeshes(state.meshes);
+        displayModelStats();
       }
     }
 
@@ -575,7 +770,24 @@ function fitCameraToMeshes(meshes) {
     (maxZ - minZ) ** 2
   );
 
-  const radius = diag * 0.6; // 1.2x diagonal / 2
+  // Normalize model size: scale to target diagonal of 10 units for consistent camera distance
+  const targetDiag = 10;
+  if (diag > 0 && diag !== targetDiag) {
+    const scale = targetDiag / diag;
+    meshes.forEach(mesh => {
+      mesh.scaling = new window.BABYLON.Vector3(scale, scale, scale);
+    });
+    // Recalculate center after scaling
+    minX *= scale;
+    minY *= scale;
+    minZ *= scale;
+    maxX *= scale;
+    maxY *= scale;
+    maxZ *= scale;
+    center.scaleInPlace(scale);
+  }
+
+  const radius = (targetDiag / 2) * 0.6; // Consistent distance: half diagonal * 0.6
 
   camera.target = center;
   camera.radius = radius > 1 ? radius : 5;
@@ -636,17 +848,14 @@ function initBabylon() {
 // ============================================================================
 
 function restoreInFlightRequest() {
-  const lastStatus = localStorage.getItem(LS_KEYS.LAST_STATUS);
-  const lastResult = localStorage.getItem(LS_KEYS.LAST_RESULT);
+  const gen = getCurrentGeneration();
+  const lastStatus = gen.last_status;
+  const lastResult = gen.last_result;
 
   if (lastStatus === 'completed' && lastResult) {
-    try {
-      const result = JSON.parse(lastResult);
-      setStatus('Restoring previous result...', 5);
-      loadGLBModel(result);
-    } catch (e) {
-      console.error('Failed to parse last result:', e);
-    }
+    setStatus('Restoring previous result...', 5);
+    // Load the model - loadGLBModel handles retopo loading automatically
+    loadGLBModel(lastResult);
   }
 
   if (state.requestId && lastStatus === 'pending') {
@@ -667,7 +876,8 @@ function startRetopology() {
     return;
   }
 
-  const glbUrl = localStorage.getItem(LS_KEYS.GLB_URL);
+  const gen = getCurrentGeneration();
+  const glbUrl = gen.glb_url;
   if (!glbUrl) {
     showError('No model to retopologize');
     return;
@@ -678,21 +888,19 @@ function startRetopology() {
   const faceLevel = document.getElementById('face-level').value;
   const polygonType = document.getElementById('polygon-type').value;
 
-  // Try OBJ format first as it may be more compatible
-  const objUrl = localStorage.getItem(LS_KEYS.LAST_RESULT)
-    ? JSON.parse(localStorage.getItem(LS_KEYS.LAST_RESULT)).model_urls?.obj?.url
-    : null;
-
-  const fileUrl = objUrl || glbUrl;
-  const fileType = objUrl ? 'obj' : 'glb';
-
   const url = `${FAL_BASE}/${FAL_RETOPO}`;
+  // Try the documented field names for FAL retopology endpoint
+  // Common variations: input_file_url, input_model_url, model_url, file_url
   const body = {
-    input_file_url: fileUrl,
-    input_file_type: fileType,
+    input_file_url: glbUrl,
+    input_file_type: 'glb',
     face_level: faceLevel,
     polygon_type: polygonType
   };
+
+  console.log('Retopo request URL:', url);
+  console.log('Retopo request body:', body);
+  console.log('GLB URL being sent:', glbUrl);
 
   fetch(url, {
     method: 'POST',
@@ -704,13 +912,17 @@ function startRetopology() {
   })
     .then(r => r.json())
     .then(data => {
+      console.log('Retopo response:', data);
       if (data.request_id) {
         state.retopoRequestId = data.request_id;
-        saveToLocalStorage(LS_KEYS.RETOPO_REQUEST_ID, data.request_id);
-        saveToLocalStorage(LS_KEYS.RETOPO_STATUS, 'pending');
+        updateCurrentGeneration({
+          retopo_request_id: data.request_id,
+          retopo_status: 'pending'
+        });
         state.repoPollCount = 0;
         pollRetopoStatus();
       } else {
+        console.error('Retopo error detail:', data.detail || data);
         showError(data.detail || 'Failed to start retopology');
       }
     })
@@ -729,7 +941,7 @@ function pollRetopoStatus() {
   if (state.repoPollCount > MAX_POLLS) {
     showError('Retopology timeout (6 min exceeded)');
     state.retopoRequestId = '';
-    localStorage.removeItem(LS_KEYS.RETOPO_REQUEST_ID);
+    updateCurrentGeneration({ retopo_request_id: '' });
     return;
   }
 
@@ -750,15 +962,17 @@ function pollRetopoStatus() {
         setStatus(`Retopologizing... (${status})`, pct);
         scheduleRetopoPoll();
       } else if (status === 'COMPLETED') {
-        saveToLocalStorage(LS_KEYS.RETOPO_STATUS, 'completed');
+        updateCurrentGeneration({ retopo_status: 'completed' });
         setStatus('Loading retopologized model...', 85);
         fetchRetopoResult();
       } else if (status === 'FAILED') {
         const reason = data.error || 'Unknown error';
         showError('Retopology failed: ' + reason);
-        saveToLocalStorage(LS_KEYS.RETOPO_STATUS, 'failed');
+        updateCurrentGeneration({
+          retopo_status: 'failed',
+          retopo_request_id: ''
+        });
         state.retopoRequestId = '';
-        localStorage.removeItem(LS_KEYS.RETOPO_REQUEST_ID);
       } else {
         scheduleRetopoPoll();
       }
@@ -792,11 +1006,13 @@ function fetchRetopoResult() {
     .then(r => r.json())
     .then(data => {
       if (data.model_glb?.url) {
-        saveToLocalStorage(LS_KEYS.RETOPO_RESULT, JSON.stringify(data));
-        saveToLocalStorage(LS_KEYS.RETOPO_GLB_URL, data.model_glb.url);
+        updateCurrentGeneration({
+          retopo_result: data,
+          retopo_glb_url: data.model_glb.url,
+          retopo_request_id: ''
+        });
         loadRetopoModel(data);
         state.retopoRequestId = '';
-        localStorage.removeItem(LS_KEYS.RETOPO_REQUEST_ID);
       } else {
         showError('No retopo model in response');
       }
@@ -836,11 +1052,14 @@ async function loadRetopoModel(result) {
 
     // Save retopo stats to history
     if (state.generationId) {
-      const retopoStats = calculateModelStats();
+      const retopoStats = calculateModelStats(retopoMeshes);
+      const gen = getCurrentGeneration();
       updateGenerationHistory(state.generationId, {
-        retopGlbUrl: localStorage.getItem(LS_KEYS.RETOPO_GLB_URL),
-        retopVertices: retopoStats.vertices,
-        retopFaces: retopoStats.faces
+        retopo: {
+          glb_url: gen.retopo_glb_url,
+          vertices: retopoStats.vertices,
+          faces: retopoStats.faces
+        }
       });
     }
 
@@ -867,7 +1086,10 @@ function saveRetopoMeshes(meshes) {
 async function loadStoredRetopoModel(result) {
   try {
     const glbUrl = result.model_glb?.url;
-    if (!glbUrl) return;
+    if (!glbUrl) {
+      console.warn('No GLB URL in retopo result');
+      return;
+    }
 
     const glbBlob = await fetch(glbUrl).then(r => r.blob());
     const BABYLON = window.BABYLON;
@@ -883,26 +1105,78 @@ async function loadStoredRetopoModel(result) {
     const retopoMeshes = importResult.meshes.filter(m => m.name !== '__root__');
     saveRetopoMeshes(retopoMeshes);
     document.getElementById('model-selector').style.display = 'block';
+
+    // Switch to retopo view (hide original, show retopo)
+    state.currentModel = 'original';
+    switchModel('retopo');
   } catch (err) {
     console.error('Failed to load stored retopo model:', err);
   }
 }
 
-function switchModel(modelType) {
-  clearScene();
+async function switchModel(modelType) {
   state.currentModel = modelType;
 
-  const meshesToLoad = modelType === 'retopo' ? state.retopoMeshes : state.meshes;
+  let meshesToDisplay = modelType === 'retopo' ? state.retopoMeshes : state.meshes;
+  let meshesToHide = modelType === 'retopo' ? state.meshes : state.retopoMeshes;
 
-  if (!meshesToLoad || meshesToLoad.length === 0) {
+  // If switching to original and it's not loaded, load it on demand
+  if (modelType === 'original' && (!meshesToDisplay || meshesToDisplay.length === 0)) {
+    const gen = getCurrentGeneration();
+    const glbUrl = gen.glb_url;
+    if (!glbUrl) {
+      showError('Original model not available');
+      return;
+    }
+
+    try {
+      setStatus('Loading original model...', 50);
+      const glbBlob = await fetch(glbUrl).then(r => r.blob());
+      const BABYLON = window.BABYLON;
+      BABYLON.FilesInput.FilesToLoad['model.glb'] = new File([glbBlob], 'model.glb', { type: 'model/gltf-binary' });
+
+      const importResult = await BABYLON.SceneLoader.ImportMeshAsync(
+        '',
+        'file:',
+        'model.glb',
+        state.scene
+      );
+
+      state.meshes = importResult.meshes.filter(m => m.name !== '__root__');
+      // Hide retopo meshes when showing original
+      if (state.retopoMeshes) {
+        state.retopoMeshes.forEach(mesh => {
+          if (mesh) mesh.isVisible = false;
+        });
+      }
+      clearStatus();
+    } catch (err) {
+      showError('Failed to load original model: ' + err.message);
+      return;
+    }
+  }
+
+  // Re-evaluate meshes in case they were loaded on demand
+  meshesToDisplay = modelType === 'retopo' ? state.retopoMeshes : state.meshes;
+  meshesToHide = modelType === 'retopo' ? state.meshes : state.retopoMeshes;
+
+  if (!meshesToDisplay || meshesToDisplay.length === 0) {
     showError('Model not loaded');
     return;
   }
 
-  state.meshes = meshesToLoad;
+  // Hide meshes we're switching away from
+  meshesToHide.forEach(mesh => {
+    if (mesh) mesh.isVisible = false;
+  });
 
-  if (state.meshes.length > 0) {
-    fitCameraToMeshes(state.meshes);
+  // Show meshes we're switching to
+  meshesToDisplay.forEach(mesh => {
+    if (mesh) mesh.isVisible = true;
+  });
+
+  if (meshesToDisplay.length > 0) {
+    fitCameraToMeshes(meshesToDisplay);
     displayModelStats();
   }
 
@@ -938,50 +1212,64 @@ function checkAndLoadHistoryModel() {
     const data = JSON.parse(loadData);
     localStorage.removeItem('hunyuan3d_load_model'); // Clear after loading
 
+    // Reset input zone display when loading from history
+    document.getElementById('input-zone-text').style.display = 'block';
+    document.getElementById('image-preview').style.display = 'none';
+    document.getElementById('glb-loaded-text').style.display = 'none';
+
     setStatus('Loading model from history...', 10);
 
-    // Load the GLB model
+    // Load the GLB model - only load retopo for performance
     async function loadHistoryModel() {
       try {
-        const glbBlob = await fetch(data.glbUrl).then(r => r.blob());
-        const BABYLON = window.BABYLON;
-        BABYLON.FilesInput.FilesToLoad['model.glb'] = new File([glbBlob], 'model.glb', { type: 'model/gltf-binary' });
+        // Load retopo if available, otherwise original
+        const glbUrl = data.retopo?.glb_url || data.model?.glb_url;
+        if (!glbUrl) {
+          console.warn('No model available in history');
+          return;
+        }
 
-        const importResult = await BABYLON.SceneLoader.ImportMeshAsync(
+        const BABYLON = window.BABYLON;
+        const fileName = data.retopo?.glb_url ? 'model_retopo.glb' : 'model.glb';
+
+        // Load model
+        const modelBlob = await fetch(glbUrl).then(r => r.blob());
+        BABYLON.FilesInput.FilesToLoad[fileName] = new File([modelBlob], fileName, { type: 'model/gltf-binary' });
+
+        const result = await BABYLON.SceneLoader.ImportMeshAsync(
           '',
           'file:',
-          'model.glb',
+          fileName,
           state.scene
         );
 
-        state.meshes = importResult.meshes.filter(m => m.name !== '__root__');
+        const meshes = result.meshes.filter(m => m.name !== '__root__');
 
-        if (state.meshes.length > 0) {
-          fitCameraToMeshes(state.meshes);
-        }
+        if (meshes.length > 0) {
+          if (data.retopo?.glb_url) {
+            state.retopoMeshes = meshes;
+            state.currentModel = 'original';
+            switchModel('retopo');
 
-        // Show title indicating loaded from history
-        const subtitle = document.createElement('div');
-        subtitle.style.cssText = 'position: absolute; top: 70px; left: 20px; background: #2a2a3e; padding: 8px 12px; border-radius: 4px; font-size: 12px; color: #4a9eff; z-index: 100;';
-        subtitle.textContent = `📂 Loaded from history (${data.modelType})`;
-        document.body.appendChild(subtitle);
+            // Display retopo stats
+            document.getElementById('model-type').textContent = 'Retopologized';
+            document.getElementById('vertex-count').textContent = data.retopo.vertices?.toLocaleString() || '?';
+            document.getElementById('face-count').textContent = data.retopo.faces?.toLocaleString() || '?';
+          } else {
+            state.meshes = meshes;
+            fitCameraToMeshes(meshes);
 
-        // Show retopology section if original
-        if (data.modelType === 'original') {
-          document.getElementById('retopology-section').style.display = 'block';
-        }
+            // Display original stats
+            document.getElementById('model-type').textContent = 'Original';
+            document.getElementById('vertex-count').textContent = data.model.vertices?.toLocaleString() || '?';
+            document.getElementById('face-count').textContent = data.model.faces?.toLocaleString() || '?';
+          }
 
-        setStatus('Complete!', 100);
-        clearStatus();
-        document.getElementById('canvas-overlay').classList.add('hidden');
-
-        // Display stats if available
-        if (data.originalVertices) {
-          state.currentModel = data.modelType || 'original';
-          document.getElementById('model-type').textContent = data.modelType === 'retopo' ? 'Retopologized' : 'Original';
-          document.getElementById('vertex-count').textContent = (data.modelType === 'retopo' ? data.retopVertices : data.originalVertices)?.toLocaleString() || '?';
-          document.getElementById('face-count').textContent = (data.modelType === 'retopo' ? data.retopFaces : data.originalFaces)?.toLocaleString() || '?';
           document.getElementById('model-stats').style.display = 'block';
+
+          setStatus('Complete!', 100);
+          clearStatus();
+          document.getElementById('canvas-overlay').classList.add('hidden');
         }
       } catch (err) {
         console.error('History model loading error:', err);
@@ -1002,7 +1290,7 @@ function checkAndLoadHistoryModel() {
 function init() {
   loadStateFromStorage();
   setupAPIKeyUI();
-  setupImagePaste();
+  setupInputZone();
   setupGenerateButton();
   setupRetopologyUI();
   initBabylon();
