@@ -7,9 +7,17 @@ const LS_API_KEY = 'fal_key';
 const FAL_BASE = 'https://queue.fal.run';
 const FAL_MODEL = 'fal-ai/hunyuan3d-v3/image-to-3d';
 const FAL_MODEL_BASE = 'fal-ai/hunyuan3d'; // For status/result requests
-const FAL_RETOPO = 'fal-ai/hunyuan-3d/v3.1/smart-topology';
+const FAL_REMESH = 'fal-ai/meshy/v5/remesh';
+const FAL_REMESH_BASE = 'fal-ai/meshy'; // For status/result requests (no v5)
 const POLL_MS = 3000;
 const MAX_POLLS = 200; // 10 min timeout
+
+// Map face level to target polycount
+const FACE_LEVEL_TO_POLYCOUNT = {
+  'low': 10000,
+  'medium': 30000,
+  'high': 100000
+};
 
 // ============================================================================
 // Current Generation Helpers
@@ -879,27 +887,25 @@ function startRetopology() {
   const gen = getCurrentGeneration();
   const glbUrl = gen.glb_url;
   if (!glbUrl) {
-    showError('No model to retopologize');
+    showError('No model to remesh');
     return;
   }
 
-  setStatus('Submitting retopology...', 5);
+  setStatus('Submitting remesh...', 5);
 
   const faceLevel = document.getElementById('face-level').value;
-  const polygonType = document.getElementById('polygon-type').value;
+  const topology = document.getElementById('polygon-type').value === 'quadrilateral' ? 'quad' : 'triangle';
 
-  const url = `${FAL_BASE}/${FAL_RETOPO}`;
-  // Try the documented field names for FAL retopology endpoint
-  // Common variations: input_file_url, input_model_url, model_url, file_url
+  const url = `${FAL_BASE}/${FAL_REMESH}`;
   const body = {
-    input_file_url: glbUrl,
-    input_file_type: 'glb',
-    face_level: faceLevel,
-    polygon_type: polygonType
+    model_url: glbUrl,
+    target_formats: ['glb'],
+    topology: topology,
+    target_polycount: FACE_LEVEL_TO_POLYCOUNT[faceLevel]
   };
 
-  console.log('Retopo request URL:', url);
-  console.log('Retopo request body:', body);
+  console.log('Remesh request URL:', url);
+  console.log('Remesh request body:', body);
   console.log('GLB URL being sent:', glbUrl);
 
   fetch(url, {
@@ -922,8 +928,8 @@ function startRetopology() {
         state.repoPollCount = 0;
         pollRetopoStatus();
       } else {
-        console.error('Retopo error detail:', data.detail || data);
-        showError(data.detail || 'Failed to start retopology');
+        console.error('Remesh error detail:', data.detail || data);
+        showError(data.detail || 'Failed to start remesh');
       }
     })
     .catch(err => {
@@ -939,13 +945,13 @@ function pollRetopoStatus() {
 
   state.repoPollCount++;
   if (state.repoPollCount > MAX_POLLS) {
-    showError('Retopology timeout (6 min exceeded)');
+    showError('Remesh timeout (6 min exceeded)');
     state.retopoRequestId = '';
     updateCurrentGeneration({ retopo_request_id: '' });
     return;
   }
 
-  const url = `${FAL_BASE}/${FAL_MODEL_BASE}/requests/${state.retopoRequestId}/status`;
+  const url = `${FAL_BASE}/${FAL_REMESH_BASE}/requests/${state.retopoRequestId}/status`;
 
   fetch(url, {
     method: 'GET',
@@ -959,15 +965,15 @@ function pollRetopoStatus() {
       const pct = 10 + (state.repoPollCount / MAX_POLLS) * 70;
 
       if (status === 'IN_QUEUE' || status === 'IN_PROGRESS') {
-        setStatus(`Retopologizing... (${status})`, pct);
+        setStatus(`Remeshing... (${status})`, pct);
         scheduleRetopoPoll();
       } else if (status === 'COMPLETED') {
         updateCurrentGeneration({ retopo_status: 'completed' });
-        setStatus('Loading retopologized model...', 85);
+        setStatus('Loading remeshed model...', 85);
         fetchRetopoResult();
       } else if (status === 'FAILED') {
         const reason = data.error || 'Unknown error';
-        showError('Retopology failed: ' + reason);
+        showError('Remesh failed: ' + reason);
         updateCurrentGeneration({
           retopo_status: 'failed',
           retopo_request_id: ''
@@ -991,11 +997,11 @@ function scheduleRetopoPoll() {
 
 function fetchRetopoResult() {
   if (!state.retopoRequestId) {
-    showError('No active retopo request');
+    showError('No active remesh request');
     return;
   }
 
-  const url = `${FAL_BASE}/${FAL_MODEL_BASE}/requests/${state.retopoRequestId}`;
+  const url = `${FAL_BASE}/${FAL_REMESH_BASE}/requests/${state.retopoRequestId}`;
 
   fetch(url, {
     method: 'GET',
@@ -1246,6 +1252,12 @@ function checkAndLoadHistoryModel() {
         const meshes = result.meshes.filter(m => m.name !== '__root__');
 
         if (meshes.length > 0) {
+          // Store model URLs in current_generation for retopology access
+          updateCurrentGeneration({
+            glb_url: data.model?.glb_url,
+            retopo_glb_url: data.retopo?.glb_url
+          });
+
           if (data.retopo?.glb_url) {
             state.retopoMeshes = meshes;
             state.currentModel = 'original';
@@ -1266,6 +1278,7 @@ function checkAndLoadHistoryModel() {
           }
 
           document.getElementById('model-stats').style.display = 'block';
+          document.getElementById('retopology-section').style.display = 'block';
 
           setStatus('Complete!', 100);
           clearStatus();
