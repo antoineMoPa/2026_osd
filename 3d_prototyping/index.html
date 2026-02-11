@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Model Generator</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #header {
+      height: 60px;
+      background: #1a1a2e;
+      border-bottom: 1px solid #2a2a3e;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      gap: 20px;
+    }
+
+    #header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      flex: 0 0 auto;
+    }
+
+    #api-key-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+
+    #api-key-input {
+      width: 250px;
+      padding: 8px 12px;
+      background: #2a2a3e;
+      border: 1px solid #3a3a4e;
+      border-radius: 4px;
+      color: #e0e0e0;
+      font-size: 14px;
+    }
+
+    #api-key-input::placeholder {
+      color: #666;
+    }
+
+    #api-key-input:focus {
+      outline: none;
+      border-color: #4a9eff;
+      background: #2a2a3e;
+    }
+
+    #api-key-toggle {
+      padding: 6px 12px;
+      background: #2a2a3e;
+      border: 1px solid #3a3a4e;
+      border-radius: 4px;
+      color: #e0e0e0;
+      cursor: pointer;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    #api-key-toggle:hover {
+      background: #3a3a4e;
+    }
+
+    #main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    #left-panel {
+      width: 300px;
+      background: #1a1a2e;
+      border-right: 1px solid #2a2a3e;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      overflow-y: auto;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #888;
+      margin-top: 10px;
+      margin-bottom: 8px;
+    }
+
+    #paste-zone {
+      border: 2px dashed #3a3a4e;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      background: #0f0f1a;
+      transition: all 0.2s;
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #paste-zone:hover {
+      border-color: #4a9eff;
+      background: #15151f;
+    }
+
+    #paste-zone.has-image {
+      border-style: solid;
+      border-color: #4a9eff;
+      padding: 0;
+    }
+
+    #paste-zone.has-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 6px;
+    }
+
+    #paste-zone-text {
+      color: #888;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    #paste-zone-text strong {
+      color: #e0e0e0;
+    }
+
+    #image-preview {
+      display: none;
+    }
+
+    #generate-btn {
+      padding: 10px 16px;
+      background: #4a9eff;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #generate-btn:hover:not(:disabled) {
+      background: #3a8eef;
+    }
+
+    #generate-btn:disabled {
+      background: #2a5a8f;
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    #download-btn {
+      padding: 10px 16px;
+      background: #4a9eff;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    #download-btn:hover {
+      background: #3a8eef;
+    }
+
+    #view-original-btn,
+    #view-retopo-btn {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex: 1;
+    }
+
+    #view-original-btn {
+      background: #4a9eff;
+    }
+
+    #view-original-btn:hover {
+      background: #3a8eef;
+    }
+
+    #view-retopo-btn {
+      background: #2a2a3e;
+      border: 1px solid #3a3a4e;
+      color: #e0e0e0;
+    }
+
+    #view-retopo-btn:hover {
+      background: #3a3a4e;
+      border-color: #4a4a5e;
+    }
+
+    #view-retopo-btn.active {
+      background: #4a9eff;
+      border-color: #4a9eff;
+      color: white;
+    }
+
+    #retopologize-btn {
+      padding: 10px 16px;
+      background: #4a9eff;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    #retopologize-btn:hover {
+      background: #3a8eef;
+    }
+
+    #settings-btn {
+      background: none;
+      border: none;
+      color: #e0e0e0;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    #settings-btn:hover {
+      background: #2a2a3e;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .settings-modal {
+      background: #1a1a2e;
+      border: 1px solid #2a2a3e;
+      border-radius: 8px;
+      padding: 30px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .settings-modal h2 {
+      margin-bottom: 20px;
+      font-size: 18px;
+    }
+
+    .settings-modal .close {
+      float: right;
+      font-size: 24px;
+      cursor: pointer;
+      color: #888;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    .settings-modal .close:hover {
+      color: #e0e0e0;
+    }
+
+    .settings-group {
+      margin-bottom: 20px;
+    }
+
+    .settings-group label {
+      display: block;
+      font-size: 13px;
+      color: #aaa;
+      margin-bottom: 8px;
+    }
+
+    .settings-group input {
+      width: 100%;
+      padding: 10px;
+      background: #0a0a0f;
+      border: 1px solid #3a3a4e;
+      border-radius: 4px;
+      color: #e0e0e0;
+      font-size: 14px;
+    }
+
+    .settings-group input:focus {
+      outline: none;
+      border-color: #4a9eff;
+    }
+
+    #progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4a9eff, #7bb8ff);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    #right-panel {
+      flex: 1;
+      position: relative;
+      background: #0a0a0f;
+    }
+
+    #renderCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #canvas-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 10, 15, 0.8);
+      pointer-events: none;
+    }
+
+    #canvas-overlay.hidden {
+      display: none;
+    }
+
+    #overlay-text {
+      text-align: center;
+      color: #666;
+      font-size: 16px;
+    }
+
+    #status-bar {
+      height: 50px;
+      background: #1a1a2e;
+      border-top: 1px solid #2a2a3e;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    #status-content {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      width: 100%;
+    }
+
+    #status-message {
+      color: #888;
+      font-size: 13px;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    #status-message.active {
+      color: #4a9eff;
+    }
+
+    #progress-bar {
+      height: 4px;
+      background: #2a2a3e;
+      border-radius: 2px;
+      overflow: hidden;
+      display: none;
+      flex: 1;
+      min-width: 100px;
+      max-width: 400px;
+    }
+
+    #progress-bar.active {
+      display: block;
+    }
+
+    #error-message {
+      color: #ff8080;
+      font-size: 13px;
+      display: none;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #error-message.active {
+      display: block;
+    }
+
+    @media (max-width: 900px) {
+      #left-panel {
+        width: 280px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <div style="display: flex; gap: 20px; align-items: center;">
+      <h1>3D Model Generator</h1>
+      <a href="dashboard.html" style="font-size: 13px; color: #4a9eff; text-decoration: none; padding: 6px 12px; background: #2a2a3e; border-radius: 4px; transition: all 0.2s;" onmouseover="this.style.background='#3a3a4e'" onmouseout="this.style.background='#2a2a3e'">📊 History</a>
+    </div>
+    <div id="api-key-group">
+      <button id="settings-btn">⚙️</button>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal-overlay">
+    <div class="settings-modal">
+      <button class="close" onclick="closeSettings()">&times;</button>
+      <h2>Settings</h2>
+      <div class="settings-group">
+        <label>FAL.ai API Key</label>
+        <input
+          id="settings-api-key-input"
+          type="password"
+          placeholder="Enter your API key"
+          autocomplete="off"
+        />
+        <button id="settings-toggle-btn" style="margin-top: 8px; width: 100%; padding: 8px; background: #2a2a3e; border: 1px solid #3a3a4e; border-radius: 4px; color: #e0e0e0; cursor: pointer; font-size: 12px;">Show</button>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button id="settings-save-btn" style="flex: 1; padding: 10px; background: #4a9eff; border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer;">Save</button>
+        <button onclick="closeSettings()" style="flex: 1; padding: 10px; background: #2a2a3e; border: 1px solid #3a3a4e; border-radius: 6px; color: #e0e0e0; font-weight: 600; cursor: pointer;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="left-panel">
+      <div class="section-title">Image</div>
+      <div id="paste-zone">
+        <div id="paste-zone-text">
+          <strong>Paste an image</strong><br>
+          (Ctrl+V or Cmd+V)
+        </div>
+        <img id="image-preview" />
+      </div>
+
+      <div class="section-title">Generate</div>
+      <button id="generate-btn" disabled>Generate 3D Model</button>
+
+      <div id="model-stats" style="display: none;">
+        <div class="section-title">Model Stats</div>
+        <div style="background: #0f0f1a; padding: 12px; border-radius: 4px; font-size: 13px; line-height: 1.8;">
+          <div>Model: <span id="model-type">Original</span></div>
+          <div>Vertices: <span id="vertex-count">0</span></div>
+          <div>Faces: <span id="face-count">0</span></div>
+        </div>
+        <button id="download-btn">Download GLB</button>
+      </div>
+
+      <div id="retopology-section" style="display: none;">
+        <div class="section-title">Retopology</div>
+        <div style="background: #0f0f1a; padding: 12px; border-radius: 4px; font-size: 12px; gap: 10px; display: flex; flex-direction: column;">
+          <div>
+            <label style="display: block; margin-bottom: 6px; color: #aaa;">Face Level</label>
+            <select id="face-level" style="width: 100%; padding: 6px; background: #1a1a2e; border: 1px solid #3a3a4e; border-radius: 4px; color: #e0e0e0; font-size: 12px;">
+              <option value="low">Low (fewer polygons)</option>
+              <option value="medium" selected>Medium (balanced)</option>
+              <option value="high">High (more detail)</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 6px; color: #aaa;">Polygon Type</label>
+            <select id="polygon-type" style="width: 100%; padding: 6px; background: #1a1a2e; border: 1px solid #3a3a4e; border-radius: 4px; color: #e0e0e0; font-size: 12px;">
+              <option value="triangle" selected>Triangle</option>
+              <option value="quadrilateral">Quadrilateral</option>
+            </select>
+          </div>
+        </div>
+        <button id="retopologize-btn">Retopologize</button>
+      </div>
+
+      <div id="model-selector" style="display: none;">
+        <div class="section-title">View Model</div>
+        <div style="display: flex; gap: 8px;">
+          <button id="view-original-btn">Original</button>
+          <button id="view-retopo-btn">Retopo</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="right-panel">
+      <canvas id="renderCanvas"></canvas>
+      <div id="canvas-overlay">
+        <div id="overlay-text">No model loaded<br><small>Generate or paste an image to start</small></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="status-bar">
+    <div id="status-content">
+      <div id="status-message">Ready</div>
+      <div id="progress-bar">
+        <div id="progress-fill"></div>
+      </div>
+      <div id="error-message"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
