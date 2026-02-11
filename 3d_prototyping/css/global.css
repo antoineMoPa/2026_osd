@@ -1,0 +1,276 @@
+/* ============================================================================
+   Global Styles
+   ============================================================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: #0a0a0f;
+  color: #e0e0e0;
+}
+
+/* ============================================================================
+   Color Palette
+   ============================================================================ */
+
+:root {
+  --primary-blue: #4a9eff;
+  --primary-blue-hover: #3a8eef;
+  --dark-bg: #0a0a0f;
+  --darker-bg: #15151f;
+  --panel-bg: #1a1a2e;
+  --border-color: #2a2a3e;
+  --border-light: #3a3a4e;
+  --text-primary: #e0e0e0;
+  --text-secondary: #aaa;
+  --text-muted: #888;
+  --text-error: #ff8080;
+  --button-disabled-bg: #2a5a8f;
+  --red-bg: #6a3a3a;
+  --red-border: #8a4a4a;
+  --red-hover: #7a4a4a;
+}
+
+/* ============================================================================
+   Buttons - Shared Styles
+   ============================================================================ */
+
+button {
+  font-family: inherit;
+}
+
+.btn,
+button[type="button"],
+button[type="submit"],
+#generate-btn,
+#download-btn,
+#download-retopo-btn,
+#retopologize-btn,
+#view-original-btn,
+#view-retopo-btn,
+#clear-btn,
+.action-btn,
+.back-btn {
+  transition: all 0.2s;
+  cursor: pointer;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+/* Primary Button */
+.btn-primary,
+#generate-btn,
+#download-btn,
+#download-retopo-btn,
+#retopologize-btn,
+#view-original-btn,
+.back-btn,
+.action-btn.primary {
+  padding: 10px 16px;
+  background: var(--primary-blue);
+  border: none;
+  color: white;
+  font-size: 14px;
+}
+
+.btn-primary:hover:not(:disabled),
+#generate-btn:hover:not(:disabled),
+#download-btn:hover,
+#download-retopo-btn:hover,
+#retopologize-btn:hover,
+#view-original-btn:hover,
+.back-btn:hover,
+.action-btn.primary:hover {
+  background: var(--primary-blue-hover);
+}
+
+#generate-btn:disabled {
+  background: var(--button-disabled-bg);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Secondary Button */
+.btn-secondary,
+.action-btn:not(.primary),
+#view-retopo-btn {
+  padding: 8px 12px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.btn-secondary:hover,
+.action-btn:not(.primary):hover,
+#view-retopo-btn:hover {
+  background: var(--border-light);
+  border-color: #4a4a5e;
+}
+
+#view-retopo-btn.active {
+  background: var(--primary-blue);
+  border-color: var(--primary-blue);
+  color: white;
+}
+
+/* Danger Button */
+.btn-danger,
+.action-btn[style*="background: #4a3a3a"] {
+  background: var(--red-bg);
+  border-color: var(--red-border);
+  color: var(--text-primary);
+}
+
+.btn-danger:hover {
+  background: var(--red-hover);
+}
+
+/* ============================================================================
+   Settings Button
+   ============================================================================ */
+
+#settings-btn {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+#settings-btn:hover {
+  background: var(--panel-bg);
+}
+
+/* ============================================================================
+   Modals
+   ============================================================================ */
+
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.settings-modal,
+.delete-modal-content {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 25px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.settings-modal h2,
+.delete-modal-content h3 {
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.settings-modal .close {
+  float: right;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.settings-modal .close:hover {
+  color: var(--text-primary);
+}
+
+/* ============================================================================
+   Form Elements
+   ============================================================================ */
+
+input[type="text"],
+input[type="password"],
+select {
+  padding: 10px;
+  background: var(--dark-bg);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+}
+
+input::placeholder {
+  color: var(--text-muted);
+}
+
+.settings-group {
+  margin-bottom: 20px;
+}
+
+.settings-group label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+/* ============================================================================
+   Typography
+   ============================================================================ */
+
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 10px;
+  margin-bottom: 8px;
+}
+
+/* ============================================================================
+   Progress Bar
+   ============================================================================ */
+
+#progress-bar {
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 2px;
+  overflow: hidden;
+  display: none;
+}
+
+#progress-bar.active {
+  display: block;
+}
+
+#progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-blue), #7bb8ff);
+  width: 0%;
+  transition: width 0.3s ease;
+}

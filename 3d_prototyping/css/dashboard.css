@@ -1,0 +1,261 @@
+/* ============================================================================
+   Dashboard Page Styles
+   ============================================================================ */
+
+html,
+body {
+  min-height: 100vh;
+  padding: 20px;
+}
+
+/* ============================================================================
+   Container
+   ============================================================================ */
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ============================================================================
+   Header
+   ============================================================================ */
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  gap: 20px;
+}
+
+.header h1 {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+/* ============================================================================
+   Controls
+   ============================================================================ */
+
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.clear-btn {
+  padding: 10px 20px;
+  background: var(--red-bg);
+  border: 1px solid var(--red-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clear-btn:hover {
+  background: var(--red-hover);
+}
+
+/* ============================================================================
+   Gallery
+   ============================================================================ */
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+/* ============================================================================
+   Generation Card
+   ============================================================================ */
+
+.generation-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.generation-card:hover {
+  border-color: var(--primary-blue);
+  transform: translateY(-2px);
+}
+
+.card-image {
+  width: 100%;
+  height: 200px;
+  background: var(--dark-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.card-image img,
+.card-image canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-image canvas {
+  cursor: grab;
+}
+
+.card-image canvas:active {
+  cursor: grabbing;
+}
+
+.card-content {
+  padding: 15px;
+}
+
+.card-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.action-btn {
+  padding: 8px 12px;
+  background: var(--border-color);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background: var(--border-light);
+  border-color: #4a4a5e;
+}
+
+.action-btn.primary {
+  grid-column: 1 / -1;
+  background: var(--primary-blue);
+  border-color: var(--primary-blue);
+  color: white;
+}
+
+.action-btn.primary:hover {
+  background: var(--primary-blue-hover);
+}
+
+.action-btn.danger {
+  background: var(--red-bg);
+  border-color: var(--red-border);
+}
+
+.action-btn.danger:hover {
+  background: var(--red-hover);
+}
+
+/* ============================================================================
+   Empty State
+   ============================================================================ */
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+
+.empty-state h2 {
+  font-size: 18px;
+  margin-bottom: 10px;
+  color: var(--text-secondary);
+}
+
+.empty-state a {
+  color: var(--primary-blue);
+}
+
+#empty-state {
+  display: none;
+}
+
+/* ============================================================================
+   Delete Modal
+   ============================================================================ */
+
+#delete-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+#delete-modal.active {
+  display: flex;
+}
+
+.delete-modal-content {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 25px;
+  max-width: 400px;
+  width: 90%;
+}
+
+.delete-modal-content h3 {
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.delete-modal-content p {
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+
+.delete-modal-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.delete-modal-buttons button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.delete-modal-buttons .confirm {
+  background: #d9534f;
+}
+
+.delete-modal-buttons .confirm:hover {
+  background: #c9453f;
+}
+
+.delete-modal-buttons .cancel {
+  background: var(--border-color);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+}
+
+.delete-modal-buttons .cancel:hover {
+  background: var(--border-light);
+}

@@ -1,0 +1,371 @@
+/* ============================================================================
+   Generator Page Styles
+   ============================================================================ */
+
+html,
+body {
+  height: 100vh;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================================================
+   Header
+   ============================================================================ */
+
+#header {
+  height: 60px;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  gap: 20px;
+}
+
+#header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+
+.header-link {
+  font-size: 13px;
+  color: var(--primary-blue);
+  text-decoration: none;
+  padding: 6px 12px;
+  background: var(--border-color);
+  border-radius: 4px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.header-link:hover {
+  background: var(--border-light);
+}
+
+#api-key-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+/* ============================================================================
+   Main Layout
+   ============================================================================ */
+
+#main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ============================================================================
+   Left Panel
+   ============================================================================ */
+
+#left-panel {
+  width: 300px;
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border-color);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  overflow-y: auto;
+}
+
+/* Input Zone */
+#input-zone {
+  border: 2px dashed var(--border-light);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--darker-bg);
+  transition: all 0.2s;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#input-zone:hover {
+  border-color: var(--primary-blue);
+  background: #15151f;
+}
+
+#input-zone-text {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+#input-zone-text strong {
+  color: var(--text-primary);
+}
+
+#image-preview,
+#glb-loaded-text {
+  border-radius: 6px;
+}
+
+#image-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#glb-loaded-text {
+  color: var(--primary-blue);
+  font-size: 13px;
+}
+
+#glb-loaded-text strong {
+  display: block;
+}
+
+#glb-filename {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+#file-input {
+  display: none;
+}
+
+/* Button Sizing */
+#generate-btn,
+#download-btn,
+#download-retopo-btn,
+#retopologize-btn {
+  width: 100%;
+  margin-top: 12px;
+}
+
+#view-original-btn,
+#view-retopo-btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+}
+
+/* Model Stats */
+#model-stats {
+  display: none;
+}
+
+#model-stats {
+  background: var(--darker-bg);
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+/* Retopology Section */
+#retopology-section {
+  display: none;
+  background: var(--darker-bg);
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  gap: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+#retopology-section label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+}
+
+#polygon-type {
+  width: 100%;
+  padding: 6px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+/* Settings Modal */
+.settings-modal {
+  padding: 30px;
+}
+
+.settings-modal h2 {
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.settings-modal > div:last-child {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.settings-modal > div:last-child button {
+  flex: 1;
+}
+
+/* Settings Toggle Button */
+#settings-toggle-btn {
+  margin-top: 8px;
+  width: 100%;
+  padding: 8px;
+  font-size: 12px;
+}
+
+/* Hidden Elements */
+#image-preview[style*="display: none"],
+#glb-loaded-text[style*="display: none"],
+#file-input[style*="display: none"],
+#download-retopo-btn[style*="display: none"] {
+  display: none !important;
+}
+
+/* Model Stats Container */
+#model-stats {
+  background: var(--darker-bg);
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+/* Retopology Container */
+#retopology-section > div:first-of-type {
+  background: var(--darker-bg);
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  gap: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Model Selector Container */
+#model-selector > div:last-child {
+  display: flex;
+  gap: 8px;
+}
+
+/* Model Selector */
+#model-selector {
+  display: none;
+  gap: 8px;
+}
+
+#model-selector {
+  display: flex;
+}
+
+/* ============================================================================
+   Right Panel
+   ============================================================================ */
+
+#right-panel {
+  flex: 1;
+  position: relative;
+  background: var(--dark-bg);
+}
+
+#renderCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Canvas Overlay */
+#canvas-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 15, 0.8);
+  pointer-events: none;
+}
+
+#canvas-overlay.hidden {
+  display: none;
+}
+
+#overlay-text {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+/* ============================================================================
+   Status Bar
+   ============================================================================ */
+
+#status-bar {
+  height: 50px;
+  background: var(--panel-bg);
+  border-top: 1px solid var(--border-color);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+#status-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+#status-message {
+  color: var(--text-muted);
+  font-size: 13px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+#status-message.active {
+  color: var(--primary-blue);
+}
+
+#error-message {
+  color: var(--text-error);
+  font-size: 13px;
+  display: none;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#error-message.active {
+  display: block;
+}
+
+/* ============================================================================
+   Responsive
+   ============================================================================ */
+
+@media (max-width: 900px) {
+  #left-panel {
+    width: 280px;
+  }
+}

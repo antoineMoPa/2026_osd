@@ -9,15 +9,9 @@ const FAL_MODEL = 'fal-ai/hunyuan3d-v3/image-to-3d';
 const FAL_MODEL_BASE = 'fal-ai/hunyuan3d'; // For status/result requests
 const FAL_REMESH = 'fal-ai/meshy/v5/remesh';
 const FAL_REMESH_BASE = 'fal-ai/meshy'; // For status/result requests (no v5)
+const REMESH_TARGET_POLYCOUNT = 3000;
 const POLL_MS = 3000;
 const MAX_POLLS = 200; // 10 min timeout
-
-// Map face level to target polycount
-const FACE_LEVEL_TO_POLYCOUNT = {
-  'low': 10000,
-  'medium': 30000,
-  'high': 100000
-};
 
 // ============================================================================
 // Current Generation Helpers
@@ -281,6 +275,31 @@ function downloadGLB() {
     });
 }
 
+function downloadRetopoModel() {
+  const gen = getCurrentGeneration();
+  const glbUrl = gen.retopo_glb_url;
+  if (!glbUrl) {
+    showError('No remeshed model available');
+    return;
+  }
+
+  fetch(glbUrl)
+    .then(r => r.blob())
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'model-remeshed.glb';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    })
+    .catch(err => {
+      showError('Download failed: ' + err.message);
+    });
+}
+
 // ============================================================================
 // UI Setup
 // ============================================================================
@@ -529,6 +548,7 @@ function startGeneration() {
   state.currentModel = 'original';
   document.getElementById('model-selector').style.display = 'none';
   document.getElementById('retopology-section').style.display = 'none';
+  document.getElementById('download-retopo-btn').style.display = 'none';
   // Reset input zone display
   document.getElementById('input-zone-text').style.display = 'block';
   document.getElementById('image-preview').style.display = 'none';
@@ -893,7 +913,6 @@ function startRetopology() {
 
   setStatus('Submitting remesh...', 5);
 
-  const faceLevel = document.getElementById('face-level').value;
   const topology = document.getElementById('polygon-type').value === 'quadrilateral' ? 'quad' : 'triangle';
 
   const url = `${FAL_BASE}/${FAL_REMESH}`;
@@ -901,7 +920,7 @@ function startRetopology() {
     model_url: glbUrl,
     target_formats: ['glb'],
     topology: topology,
-    target_polycount: FACE_LEVEL_TO_POLYCOUNT[faceLevel]
+    target_polycount: REMESH_TARGET_POLYCOUNT
   };
 
   console.log('Remesh request URL:', url);
@@ -1057,23 +1076,46 @@ async function loadRetopoModel(result) {
     saveRetopoMeshes(retopoMeshes);
 
     // Save retopo stats to history
-    if (state.generationId) {
-      const retopoStats = calculateModelStats(retopoMeshes);
-      const gen = getCurrentGeneration();
-      updateGenerationHistory(state.generationId, {
+    const retopoStats = calculateModelStats(retopoMeshes);
+    const gen = getCurrentGeneration();
+
+    // Ensure we have a generation ID - find or create
+    let generationId = state.generationId;
+    if (!generationId && gen.id) {
+      // If we have an ID in the current generation, use that
+      generationId = gen.id;
+      state.generationId = generationId;
+    } else if (!generationId) {
+      // If still no ID, find the most recent model in history
+      const history = getHistory();
+      const recentEntry = history
+        .filter(e => e.ai_model === 'hunyuan3d')
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+      if (recentEntry) {
+        generationId = recentEntry.id;
+        state.generationId = generationId;
+      }
+    }
+
+    if (generationId) {
+      updateGenerationHistory(generationId, {
         retopo: {
-          glb_url: gen.retopo_glb_url,
+          glb_url: gen.retopo_glb_url || glbUrl,
           vertices: retopoStats.vertices,
           faces: retopoStats.faces
         }
       });
+      console.log('Saved retopo to history:', { generationId, glbUrl: gen.retopo_glb_url || glbUrl });
+    } else {
+      console.warn('No generation ID found - retopo not saved to history');
     }
 
     setStatus('Complete!', 100);
     clearStatus();
 
-    // Show model selector
+    // Show model selector and download button
     document.getElementById('model-selector').style.display = 'block';
+    document.getElementById('download-retopo-btn').style.display = 'block';
 
     // Switch to retopo view
     switchModel('retopo');
@@ -1202,6 +1244,7 @@ async function switchModel(modelType) {
 
 function setupRetopologyUI() {
   document.getElementById('retopologize-btn').addEventListener('click', startRetopology);
+  document.getElementById('download-retopo-btn').addEventListener('click', downloadRetopoModel);
   document.getElementById('view-original-btn').addEventListener('click', () => switchModel('original'));
   document.getElementById('view-retopo-btn').addEventListener('click', () => switchModel('retopo'));
 }
@@ -1267,6 +1310,11 @@ function checkAndLoadHistoryModel() {
             document.getElementById('model-type').textContent = 'Retopologized';
             document.getElementById('vertex-count').textContent = data.retopo.vertices?.toLocaleString() || '?';
             document.getElementById('face-count').textContent = data.retopo.faces?.toLocaleString() || '?';
+
+            // Show model selector and download button for retopo
+            document.getElementById('model-selector').style.display = 'block';
+            document.getElementById('download-retopo-btn').style.display = 'block';
+            document.getElementById('retopology-section').style.display = 'none';
           } else {
             state.meshes = meshes;
             fitCameraToMeshes(meshes);
@@ -1275,10 +1323,12 @@ function checkAndLoadHistoryModel() {
             document.getElementById('model-type').textContent = 'Original';
             document.getElementById('vertex-count').textContent = data.model.vertices?.toLocaleString() || '?';
             document.getElementById('face-count').textContent = data.model.faces?.toLocaleString() || '?';
+
+            // Show retopology section for models without retopo
+            document.getElementById('retopology-section').style.display = 'block';
           }
 
           document.getElementById('model-stats').style.display = 'block';
-          document.getElementById('retopology-section').style.display = 'block';
 
           setStatus('Complete!', 100);
           clearStatus();
