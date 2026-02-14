@@ -19,14 +19,14 @@ const MAX_POLLS = 200; // 10 min timeout
 
 function getCurrentGeneration() {
   try {
-    return JSON.parse(localStorage.getItem('current_generation') || '{}');
+    return JSON.parse(sessionStorage.getItem('current_generation') || '{}');
   } catch {
     return {};
   }
 }
 
 function saveCurrentGeneration(gen) {
-  localStorage.setItem('current_generation', JSON.stringify(gen));
+  sessionStorage.setItem('current_generation', JSON.stringify(gen));
 }
 
 function updateCurrentGeneration(updates) {
