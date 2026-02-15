@@ -1,0 +1,17 @@
+{
+  "id": "main_car",
+  "name": "Main Car",
+  "modelFile": "main_car.glb",
+  "physics": {
+    "maxSpeed": 25,
+    "acceleration": 15,
+    "friction": 0.85,
+    "maxSteerAngle": 1.4,
+    "heightOffset": 0.0,
+    "mass": 1500
+  },
+  "model": {
+    "scale": 1.0,
+    "rotationZ": 0
+  }
+}
