@@ -12,6 +12,7 @@
   },
   "model": {
     "scale": 1.0,
-    "rotationZ": 0
+    "rotationY": 3.14159,
+    "rotationZ": 0.0
   }
 }

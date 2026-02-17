@@ -1,0 +1,18 @@
+{
+  "id": "blue_car",
+  "name": "Blue Car",
+  "modelFile": "blue_car.glb",
+  "physics": {
+    "maxSpeed": 25,
+    "acceleration": 15,
+    "friction": 0.85,
+    "maxSteerAngle": 2.0,
+    "heightOffset": 0.0,
+    "mass": 1500
+  },
+  "model": {
+    "scale": 1.0,
+    "rotationY": 3.14159,
+    "rotationZ": 0.0
+  }
+}

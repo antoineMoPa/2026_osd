@@ -141,7 +141,8 @@ export class Vehicle {
                     mesh.parent = this.rootNode;
                 }
 
-                // Apply Z rotation to correct model orientation
+                // Apply rotation corrections to model orientation
+                meshes[0].rotation.y = this.config.model.rotationY;
                 meshes[0].rotation.z = this.config.model.rotationZ;
 
                 // Apply scale from config or override

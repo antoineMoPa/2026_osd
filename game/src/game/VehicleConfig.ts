@@ -12,6 +12,7 @@ export interface VehicleConfig {
     };
     model: {
         scale: number;
+        rotationY: number;
         rotationZ: number;
     };
 }

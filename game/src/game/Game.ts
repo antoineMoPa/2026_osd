@@ -12,6 +12,7 @@ import { Vehicle } from './Vehicle';
 import { InputManager } from './InputManager';
 import { VehicleConfigLoader } from './VehicleConfig';
 import { PostProcessShader } from './PostProcessShader';
+import { AIPathFollower } from './AIPathFollower';
 
 export class Game {
     private engine: Engine;
@@ -20,6 +21,7 @@ export class Game {
     private vehicle: Vehicle | null = null;
     private inputManager: InputManager;
     private postProcessShader: PostProcessShader | null = null;
+    private aiPathFollower: AIPathFollower | null = null;
     private elapsedTime: number = 0;
 
     constructor(_canvas: HTMLCanvasElement, engine: Engine) {
@@ -168,6 +170,20 @@ export class Game {
 
             console.log('Vehicle created successfully');
 
+            // Initialize AI path follower
+            const aiCount = 3;
+            const aiSpeed = 12;
+            this.aiPathFollower = new AIPathFollower(this.scene);
+            if (this.aiPathFollower.isReady()) {
+                const spacing = this.aiPathFollower.getTotalLength() / aiCount;
+                for (let i = 0; i < aiCount; i++) {
+                    const aiConfig = await VehicleConfigLoader.loadVehicleConfig('blue_car');
+                    aiConfig.name = `AI Car ${i + 1}`;
+                    aiConfig.id = `ai_car_${i + 1}`;
+                    await this.aiPathFollower.spawnAIVehicle(aiConfig, aiSpeed, i * spacing);
+                }
+            }
+
             // Start the game loop
             this.startGameLoop();
             return true;
@@ -195,6 +211,11 @@ export class Game {
 
                 // Update vehicle
                 this.vehicle.update(deltaTime);
+            }
+
+            // Update AI path follower
+            if (this.aiPathFollower) {
+                this.aiPathFollower.update(deltaTime);
             }
 
             // Update follow camera
