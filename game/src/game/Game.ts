@@ -11,6 +11,7 @@ import '@babylonjs/loaders/glTF';
 import { Vehicle } from './Vehicle';
 import { InputManager } from './InputManager';
 import { VehicleConfigLoader } from './VehicleConfig';
+import { PostProcessShader } from './PostProcessShader';
 
 export class Game {
     private engine: Engine;
@@ -18,6 +19,8 @@ export class Game {
     private camera!: FreeCamera;
     private vehicle: Vehicle | null = null;
     private inputManager: InputManager;
+    private postProcessShader: PostProcessShader | null = null;
+    private elapsedTime: number = 0;
 
     constructor(_canvas: HTMLCanvasElement, engine: Engine) {
         this.engine = engine;
@@ -57,6 +60,41 @@ export class Game {
         console.log('Scene setup complete');
     }
 
+    /**
+     * Initialize post-processing shader from a file
+     * @param shaderFilePath - Path to the shader file (e.g., '/shaders/postprocess.glsl')
+     * @param uniforms - Optional uniforms (e.g., { time: 0 })
+     */
+    async initializePostProcessShader(
+        shaderFilePath: string,
+        uniforms?: { [key: string]: any }
+    ) {
+        try {
+            this.postProcessShader = new PostProcessShader();
+            const fragmentShaderCode =
+                await this.postProcessShader.loadShaderFromFile(
+                    shaderFilePath
+                );
+            this.postProcessShader.createPostProcess(
+                this.camera,
+                this.engine,
+                fragmentShaderCode,
+                uniforms
+            );
+            console.log('✓ Post-processing shader initialized');
+        } catch (error) {
+            console.error('✗ Failed to initialize post-processing shader:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get the post-processing shader instance
+     */
+    getPostProcessShader(): PostProcessShader | null {
+        return this.postProcessShader;
+    }
+
     private updateFollowingCamera() {
         if (!this.vehicle) return;
 
@@ -84,7 +122,7 @@ export class Game {
 
         const speed = this.vehicle.getSpeed();
         const smoothFactor = Math.min(1, Math.abs(speed) / 3);
-        const lerpSpeed = 0.02 + smoothFactor * 0.08;
+        const lerpSpeed = 0.001 + smoothFactor * 0.08;
 
         this.camera.position = Vector3.Lerp(
             this.camera.position,
@@ -141,6 +179,9 @@ export class Game {
 
     private startGameLoop() {
         this.engine.runRenderLoop(() => {
+            const deltaTime = this.engine.getDeltaTime() / 1000; // Convert to seconds
+            this.elapsedTime += deltaTime;
+
             if (this.vehicle) {
                 // Get input
                 const input = this.inputManager.getInput();
@@ -153,12 +194,16 @@ export class Game {
                 );
 
                 // Update vehicle
-                const deltaTime = this.engine.getDeltaTime() / 1000; // Convert to seconds
                 this.vehicle.update(deltaTime);
             }
 
             // Update follow camera
             this.updateFollowingCamera();
+
+            // Update post-processing shader time uniform
+            if (this.postProcessShader) {
+                this.postProcessShader.setUniform('time', this.elapsedTime);
+            }
 
             // Render scene
             this.scene.render();

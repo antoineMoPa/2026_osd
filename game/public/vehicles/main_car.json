@@ -6,7 +6,7 @@
     "maxSpeed": 25,
     "acceleration": 15,
     "friction": 0.85,
-    "maxSteerAngle": 1.4,
+    "maxSteerAngle": 2.0,
     "heightOffset": 0.0,
     "mass": 1500
   },

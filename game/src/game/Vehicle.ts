@@ -31,6 +31,9 @@ export class Vehicle {
     private inputAccelerate: number = 0;
     private inputSteer: number = 0;
     private inputHandbrake: boolean = false;
+    private steerVelocity: number = 0; // Rate of change of steering angle
+    private steerVelocityDamping: number = 0.1; // How fast steering velocity decays
+    private steerAngleDamping: number = 0.02; // How fast steering angle returns to center
 
     // Surface geometry — auto-detected from scene meshes
     private surfaceType: SurfaceType = 'ground';
@@ -258,14 +261,45 @@ export class Vehicle {
             this.speed *= Math.pow(this.friction, deltaTime);
         }
 
-        // Update steering with speed-based curve
+        // Update steering with second derivative (steering velocity + damping)
         const absSpeed = Math.abs(this.speed);
 
-        // No turning when stopped
         if (absSpeed < 0.5) {
+            // No turning when stopped
+            this.steerVelocity = 0;
             this.steerAngle = 0;
         } else {
-            this.steerAngle = this.inputSteer * this.maxSteerAngle * this.speed;
+            // Input affects steering velocity (rate of angle change)
+            this.steerVelocity -= this.inputSteer * this.maxSteerAngle * deltaTime;
+
+            // Clamp steering velocity to reasonable range
+            const maxSteerVelocity = this.maxSteerAngle * 3;
+            this.steerVelocity = Math.max(
+                -maxSteerVelocity,
+                Math.min(maxSteerVelocity, this.steerVelocity)
+            );
+
+            // Apply damping to steering velocity
+            this.steerVelocity *= Math.pow(
+                this.steerVelocityDamping,
+                deltaTime
+            );
+
+            // Update steering angle from velocity
+            this.steerAngle +=
+                this.steerVelocity * deltaTime * this.speed;
+
+            // Clamp steering angle to max
+            this.steerAngle = Math.max(
+                -this.maxSteerAngle,
+                Math.min(this.maxSteerAngle, this.steerAngle)
+            );
+
+            // Apply damping to steering angle: gradually return to 0
+            this.steerAngle *= Math.pow(
+                this.steerAngleDamping,
+                deltaTime
+            );
         }
     }
 

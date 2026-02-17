@@ -22,6 +22,12 @@ async function main() {
         const success = await game.initialize();
 
         if (success) {
+            // Initialize post-processing shader
+            await game.initializePostProcessShader('/shaders/postprocess.glsl', {
+                time: 0,
+                resolution: [1, 1],
+            });
+
             statusEl.textContent = '';
             controlsEl.style.display = 'block';
         } else {
